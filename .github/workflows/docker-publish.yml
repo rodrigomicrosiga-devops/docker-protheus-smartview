@@ -1,56 +1,44 @@
-name: CI/CD - Build & Publish SmartView
+name: Docker Build & Push to Docker Hub
 
 on:
   push:
-    branches: [ "develop" ]
-    tags: [ 'v*.*.*' ]
+    branches: 
+      - develop
+    paths-ignore:
+      - 'README.md'
+      - '.gitignore'
 
 jobs:
   build-and-push:
-    # Direciona o job estritamente para a sua esteira de runners privados
-    runs-on: [self-hosted, linux]
+    name: Build and Push Image on Local Infrastructure V2
+    runs-on: self-hosted  # 🚀 O Runner Global da Organização vai assumir aqui!
 
     steps:
-    - name: Checkout do Código
-      uses: actions/checkout@v4
+      - name: Checkout do Código
+        uses: actions/checkout@v4
 
-    # Passo padronizado: Copia o zip do diretório de cache/mídia local do runner para o contexto do build
-    - name: Copiar Instalador do Cache Local do Runner
-      run: |
-        # Ajuste o caminho abaixo se a sua pasta central de mídias TOTVS for diferente no runner
-        CP_SOURCE="/opt/totvs/midias/3.9.0.4558336-linux-x64.zip"
-        if [ -f "$CP_SOURCE" ]; then
-          cp "$CP_SOURCE" .
-        else
-          echo "❌ ERRO: Instalador do SmartView não localizado em $CP_SOURCE"
-          exit 1;
-        fi
+      # 🚀 SOLUÇÃO DEFINITIVA: Vincula o instalador guardado no seu host físico 
+      # herdando exatamente o mesmo padrão de fallback do License Server.
+      - name: Resgatar Instalador Local no Workspace
+        run: |
+          cp ../../3.9.0.4558336-linux-x64.zip . 2>/dev/null || \
+          cp "${{ github.workspace }}/../3.9.0.4558336-linux-x64.zip" . 2>/dev/null || \
+          cp /media/rodrigo/dados/docker-protheus-smartview/3.9.0.4558336-linux-x64.zip .
 
-    - name: Configurar Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    - name: Autenticar no Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Extrair Metadados (Tags/Labels)
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: rodrigomicrosiga/protheus-smartview
-        tags: |
-          type=semver,pattern={{version}}
-          type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-
-    - name: Compilar e Publicar Imagem
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        # Mapeia o cache local para não rebaixar camadas de fontes (Debian/NotoSans)
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          # Publica seguindo a sua estrutura de tags do Docker Hub
+          tags: rodrigomicrosiga/protheus-smartview:3.9.0
