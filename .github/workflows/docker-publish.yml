@@ -40,5 +40,5 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          # Publica seguindo a sua estrutura de tags do Docker Hub
-          tags: rodrigomicrosiga/protheus-smartview:3.9.0
+          # 🎯 Corrigido para seguir o padrão de nomenclatura do seu ecossistema
+          tags: rodrigomicrosiga/smartview-dev:3.9.0
