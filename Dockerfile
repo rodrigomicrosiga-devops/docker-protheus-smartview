@@ -4,8 +4,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 USER root
 
-# 1. Instala infraestrutura, fontes e o SYSTEMD (obrigatório para o Type=notify da ferramenta)
-RUN apt-get update && apt-get install -y \
+# 1. Instala infraestrutura essencial, fontes e o SYSTEMD em camada única limpa
+RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     unzip \
     fontconfig \
@@ -18,7 +18,8 @@ RUN apt-get update && apt-get install -y \
     systemd-sysv \
     && echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | debconf-set-selections \
     && sed -i 's/main/main contrib/g' /etc/apt/sources.list.d/debian.sources \
-    && apt-get update && apt-get install -y ttf-mscorefonts-installer \
+    && apt-get update && apt-get install -y --no-install-recommends ttf-mscorefonts-installer \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Limpa alvos desnecessários do systemd para otimizar o container
@@ -30,25 +31,25 @@ RUN rm -f /lib/systemd/system/multi-user.target.wants/* \
     /lib/systemd/system/basic.target.wants/* \
     /lib/systemd/system/anaconda.target.wants/*
 
-# 2. Download e Instalação de todos os formatos do NotoSans
-RUN wget -O /tmp/noto-sans.zip https://github.com/notofonts/latin-greek-cyrillic/releases/download/NotoSans-v2.014/NotoSans-v2.014.zip \
-    && unzip /tmp/noto-sans.zip -d /tmp/noto-sans \
+# 2. Download e Instalação otimizada das fontes NotoSans (Extrai apenas os TTFs essenciais)
+RUN wget -q -O /tmp/noto-sans.zip https://github.com/notofonts/latin-greek-cyrillic/releases/download/NotoSans-v2.014/NotoSans-v2.014.zip \
     && mkdir -p /usr/share/fonts/noto-sans \
-    && find /tmp/noto-sans -type f \( -name "*.ttf" -o -name "*.woff" -o -name "*.woff2" \) -exec cp {} /usr/share/fonts/noto-sans \; \
+    && unzip -j /tmp/noto-sans.zip "*NotoSans-Regular.ttf" "*NotoSans-Bold.ttf" "*NotoSans-Italic.ttf" "*NotoSans-BoldItalic.ttf" -d /usr/share/fonts/noto-sans \
     && fc-cache -f -v \
-    && rm -rf /tmp/noto-sans /tmp/noto-sans.zip
+    && rm -f /tmp/noto-sans.zip
 
-# 3. Preparação e extração do instalador na pasta oficial
+# 3. Extração Direta do Instalador (Padrão Antipattern de Cópia resolvido)
 RUN mkdir -p /usr/sbin/smart-view
 WORKDIR /usr/sbin/smart-view
 
-COPY 3.9.0.4558336-linux-x64.zip /usr/sbin/smart-view/smartview.zip
+# Copiamos o ZIP para uma pasta temporária do Docker para não sujar a camada final
+COPY 3.9.0.4558336-linux-x64.zip /tmp/smartview.zip
 
-RUN chmod 777 smartview.zip \
-    && unzip -o smartview.zip \
-    && rm -f smartview.zip
+# Descompacta diretamente no local final e limpa o zip na MESMA instrução para não gerar histórico de peso
+RUN unzip -o /tmp/smartview.zip -d /usr/sbin/smart-view/ \
+    && rm -f /tmp/smartview.zip
 
-# 4. Criação do arquivo de serviço apontando para o binário real do pacote (TReports.Agent)
+# 4. Criação do arquivo de serviço do Systemd (TReports.Agent)
 RUN echo "[Unit]\n\
 Description=smart-view-agent\n\
 \n\
