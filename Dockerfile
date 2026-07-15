@@ -31,10 +31,10 @@ RUN rm -f /lib/systemd/system/multi-user.target.wants/* \
     /lib/systemd/system/basic.target.wants/* \
     /lib/systemd/system/anaconda.target.wants/*
 
-# 2. Download e Instalação otimizada das fontes NotoSans (Extrai apenas os TTFs essenciais)
+# 2. Download e Instalação otimizada das fontes NotoSans (Extrai apenas os TTFs essenciais com overwrite forcado)
 RUN wget -q -O /tmp/noto-sans.zip https://github.com/notofonts/latin-greek-cyrillic/releases/download/NotoSans-v2.014/NotoSans-v2.014.zip \
     && mkdir -p /usr/share/fonts/noto-sans \
-    && unzip -j /tmp/noto-sans.zip "*NotoSans-Regular.ttf" "*NotoSans-Bold.ttf" "*NotoSans-Italic.ttf" "*NotoSans-BoldItalic.ttf" -d /usr/share/fonts/noto-sans \
+    && unzip -o -j /tmp/noto-sans.zip "*NotoSans-Regular.ttf" "*NotoSans-Bold.ttf" "*NotoSans-Italic.ttf" "*NotoSans-BoldItalic.ttf" -d /usr/share/fonts/noto-sans \
     && fc-cache -f -v \
     && rm -f /tmp/noto-sans.zip
 
