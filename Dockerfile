@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     cabextract \
     curl \
     libgdiplus \
+    libicu-dev \
     systemd \
     systemd-sysv \
     && echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | debconf-set-selections \
